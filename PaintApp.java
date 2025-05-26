@@ -32,9 +32,9 @@ public class PaintApp extends JFrame {
         add(drawArea, BorderLayout.CENTER);
 
         // Tool Buttons
-        JToggleButton pencilBtn = new JToggleButton("Pencil");
+        JToggleButton pencilBtn = new JToggleButton("Lines");
         JToggleButton rectBtn = new JToggleButton("Rectangle");
-        JToggleButton ovalBtn = new JToggleButton("Oval");
+        JToggleButton ovalBtn = new JToggleButton("Circle");
         JToggleButton eraserBtn = new JToggleButton("Eraser");
         JButton clearBtn = new JButton("Clear");
 
