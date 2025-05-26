@@ -22,6 +22,20 @@ public class PaintApp extends JFrame {
         SwingUtilities.invokeLater(PaintApp::new);
     }
 
+    // IF WANTED TO USE FLAT LAF, UNCOMMENT THE FOLLOWING LINE AND COMMENT THE ABOVE
+    // UIManager line
+
+    /*
+     * public static void main(String[] args) {
+     * try {
+     * UIManager.setLookAndFeel(new FlatLightLaf());
+     * } catch (Exception ex) {
+     * System.err.println("Failed to initialize LaF");
+     * }
+     * SwingUtilities.invokeLater(PaintApp::new);
+     * }
+     */
+
     public PaintApp() {
         setTitle("Java Paint App");
         setSize(1000, 700);
