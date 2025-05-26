@@ -1,4 +1,4 @@
-import com.formdev.flatlaf.FlatLightLaf;
+// import com.formdev.flatlaf.FlatLightLaf; ONLY IF WANTED TO USE FLAT LAF
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,7 +15,7 @@ public class PaintApp extends JFrame {
 
     public static void main(String[] args) {
         try {
-            UIManager.setLookAndFeel(new FlatLightLaf());
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception ex) {
             System.err.println("Failed to initialize LaF");
         }
