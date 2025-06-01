@@ -9,8 +9,10 @@ import java.util.ArrayList;
 public class PaintApp extends JFrame {
     private DrawArea drawArea;
     private static final Color[] COLOR_PALETTE = {
-            Color.BLACK, new Color(64, 64, 64), new Color(96, 96, 96), new Color(160, 160, 160), Color.LIGHT_GRAY,
-            Color.WHITE, Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW, Color.MAGENTA
+            Color.BLACK, Color.WHITE,
+            Color.RED, Color.ORANGE, Color.YELLOW,
+            Color.GREEN, Color.CYAN, Color.BLUE,
+            Color.MAGENTA, Color.PINK
     };
 
     public static void main(String[] args) {
@@ -22,20 +24,6 @@ public class PaintApp extends JFrame {
         SwingUtilities.invokeLater(PaintApp::new);
     }
 
-    // IF WANTED TO USE FLAT LAF, UNCOMMENT THE FOLLOWING LINE AND COMMENT THE ABOVE
-    // UIManager line
-
-    /*
-     * public static void main(String[] args) {
-     * try {
-     * UIManager.setLookAndFeel(new FlatLightLaf());
-     * } catch (Exception ex) {
-     * System.err.println("Failed to initialize LaF");
-     * }
-     * SwingUtilities.invokeLater(PaintApp::new);
-     * }
-     */
-
     public PaintApp() {
         setTitle("Java Paint App");
         setSize(1000, 700);
@@ -45,7 +33,7 @@ public class PaintApp extends JFrame {
         drawArea = new DrawArea();
         add(drawArea, BorderLayout.CENTER);
 
-        // Tool Buttons
+        // === Tools ===
         JToggleButton pencilBtn = new JToggleButton("Lines");
         JToggleButton rectBtn = new JToggleButton("Rectangle");
         JToggleButton ovalBtn = new JToggleButton("Circle");
@@ -74,20 +62,60 @@ public class PaintApp extends JFrame {
         toolPanel.add(eraserBtn);
         toolPanel.add(clearBtn);
 
-        // Color Buttons
-        JPanel colorPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 5));
+        // === Color Buttons ===
+        JPanel palettePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        JPanel strokePreview = new JPanel();
+        JPanel fillPreview = new JPanel();
+
         for (Color color : COLOR_PALETTE) {
             JButton btn = new JButton();
             btn.setPreferredSize(new Dimension(25, 25));
             btn.setBackground(color);
+            btn.setOpaque(true);
+            btn.setContentAreaFilled(true);
+            btn.setBorderPainted(true);
             btn.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY));
-            btn.addActionListener(e -> drawArea.setCurrentColor(color));
-            colorPanel.add(btn);
+            btn.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    if (SwingUtilities.isLeftMouseButton(e)) {
+                        drawArea.setStrokeColor(color);
+                        strokePreview.setBackground(color);
+                    } else if (SwingUtilities.isRightMouseButton(e)) {
+                        drawArea.setFillColor(color);
+                        fillPreview.setBackground(color);
+                    }
+                }
+            });
+            palettePanel.add(btn);
         }
 
+        // === Stroke & Fill Panels ===
+        strokePreview.setPreferredSize(new Dimension(60, 40));
+        strokePreview.setBackground(drawArea.getStrokeColor());
+        strokePreview.setBorder(BorderFactory.createTitledBorder("Stroke"));
+
+        fillPreview.setPreferredSize(new Dimension(60, 40));
+        fillPreview.setBackground(drawArea.getFillColor());
+        fillPreview.setBorder(BorderFactory.createTitledBorder("Fill"));
+
+        JPanel previewPanel = new JPanel();
+        previewPanel.setLayout(new BoxLayout(previewPanel, BoxLayout.Y_AXIS));
+        previewPanel.add(strokePreview);
+        previewPanel.add(Box.createVerticalStrut(5));
+        previewPanel.add(fillPreview);
+
+        // === Combine Panels ===
+        JPanel colorPanel = new JPanel(new BorderLayout());
+        colorPanel.add(palettePanel, BorderLayout.CENTER);
+        colorPanel.add(previewPanel, BorderLayout.EAST);
+
+        // === Top Panel ===
         JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         topPanel.add(toolPanel, BorderLayout.WEST);
         topPanel.add(colorPanel, BorderLayout.EAST);
+
         add(topPanel, BorderLayout.NORTH);
 
         setVisible(true);
@@ -99,9 +127,11 @@ public class PaintApp extends JFrame {
         }
 
         private Tool currentTool = Tool.PENCIL;
-        private Color currentColor = Color.BLACK;
+        private Color strokeColor = Color.BLACK;
+        private Color fillColor = Color.WHITE;
         private Point startPoint, endPoint;
         private final java.util.List<ColoredShape> shapes = new ArrayList<>();
+        private boolean isRightClick = false;
 
         public DrawArea() {
             setBackground(Color.WHITE);
@@ -109,6 +139,10 @@ public class PaintApp extends JFrame {
             MouseAdapter mouseHandler = new MouseAdapter() {
                 public void mousePressed(MouseEvent e) {
                     startPoint = e.getPoint();
+                    isRightClick = SwingUtilities.isRightMouseButton(e);
+                    if (isRightClick)
+                        return;
+
                     if (currentTool == Tool.PENCIL || currentTool == Tool.ERASER) {
                         endPoint = startPoint;
                         addShape(startPoint, endPoint);
@@ -117,6 +151,9 @@ public class PaintApp extends JFrame {
                 }
 
                 public void mouseDragged(MouseEvent e) {
+                    if (isRightClick)
+                        return;
+
                     endPoint = e.getPoint();
                     if (currentTool == Tool.PENCIL || currentTool == Tool.ERASER) {
                         addShape(startPoint, endPoint);
@@ -126,6 +163,9 @@ public class PaintApp extends JFrame {
                 }
 
                 public void mouseReleased(MouseEvent e) {
+                    if (isRightClick)
+                        return;
+
                     endPoint = e.getPoint();
                     if (currentTool != Tool.PENCIL && currentTool != Tool.ERASER) {
                         addShape(startPoint, endPoint);
@@ -142,8 +182,20 @@ public class PaintApp extends JFrame {
             this.currentTool = tool;
         }
 
-        public void setCurrentColor(Color color) {
-            this.currentColor = color;
+        public void setStrokeColor(Color color) {
+            this.strokeColor = color;
+        }
+
+        public void setFillColor(Color color) {
+            this.fillColor = color;
+        }
+
+        public Color getStrokeColor() {
+            return strokeColor;
+        }
+
+        public Color getFillColor() {
+            return fillColor;
         }
 
         public void clearCanvas() {
@@ -162,25 +214,35 @@ public class PaintApp extends JFrame {
             } else {
                 shape = new Line2D.Float(start, end);
             }
-            shapes.add(new ColoredShape(shape, currentTool == Tool.ERASER ? Color.WHITE : currentColor));
+            shapes.add(new ColoredShape(shape,
+                    currentTool == Tool.ERASER ? Color.WHITE : strokeColor,
+                    currentTool == Tool.PENCIL || currentTool == Tool.ERASER ? null : fillColor));
         }
 
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g;
             for (ColoredShape cs : shapes) {
-                g2.setColor(cs.color);
-                g2.draw(cs.shape);
+                if (cs.fill != null) {
+                    g2.setColor(cs.fill);
+                    g2.fill(cs.shape);
+                }
+                if (cs.stroke != null) {
+                    g2.setColor(cs.stroke);
+                    g2.draw(cs.shape);
+                }
             }
         }
 
         static class ColoredShape {
             Shape shape;
-            Color color;
+            Color stroke;
+            Color fill;
 
-            public ColoredShape(Shape shape, Color color) {
+            public ColoredShape(Shape shape, Color stroke, Color fill) {
                 this.shape = shape;
-                this.color = color;
+                this.stroke = stroke;
+                this.fill = fill;
             }
         }
     }
