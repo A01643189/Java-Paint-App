@@ -1,5 +1,3 @@
-// import com.formdev.flatlaf.FlatLightLaf; ONLY IF WANTED TO USE FLAT LAF
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -8,6 +6,8 @@ import java.util.ArrayList;
 
 public class PaintApp extends JFrame {
     private DrawArea drawArea;
+    private JSlider strokeSlider;
+
     private static final Color[] COLOR_PALETTE = {
             Color.BLACK, Color.WHITE,
             Color.RED, Color.ORANGE, Color.YELLOW,
@@ -33,12 +33,12 @@ public class PaintApp extends JFrame {
         drawArea = new DrawArea();
         add(drawArea, BorderLayout.CENTER);
 
-        // === Tools ===
-        JToggleButton pencilBtn = new JToggleButton("Lines");
-        JToggleButton rectBtn = new JToggleButton("Rectangle");
-        JToggleButton ovalBtn = new JToggleButton("Circle");
-        JToggleButton eraserBtn = new JToggleButton("Eraser");
-        JButton clearBtn = new JButton("Clear");
+        // === Tool Buttons with Scaled Icons ===
+        JToggleButton pencilBtn = createToggleToolButton("pencil.png", "Lines");
+        JToggleButton rectBtn = createToggleToolButton("rectangle.png", "Rectangle");
+        JToggleButton ovalBtn = createToggleToolButton("oval.png", "Oval");
+        JToggleButton eraserBtn = createToggleToolButton("eraser.png", "Eraser");
+        JButton clearBtn = createIconButton("clear.png", "Clear");
 
         ButtonGroup tools = new ButtonGroup();
         tools.add(pencilBtn);
@@ -55,15 +55,25 @@ public class PaintApp extends JFrame {
         eraserBtn.addActionListener(e -> drawArea.setTool(DrawArea.Tool.ERASER));
         clearBtn.addActionListener(e -> drawArea.clearCanvas());
 
+        strokeSlider = new JSlider(1, 20, 2);
+        strokeSlider.setMajorTickSpacing(5);
+        strokeSlider.setMinorTickSpacing(1);
+        strokeSlider.setPaintTicks(true);
+        strokeSlider.setPaintLabels(true);
+        strokeSlider.addChangeListener(e -> drawArea.setStrokeWidth(strokeSlider.getValue()));
+
         JPanel toolPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         toolPanel.add(pencilBtn);
         toolPanel.add(rectBtn);
         toolPanel.add(ovalBtn);
         toolPanel.add(eraserBtn);
         toolPanel.add(clearBtn);
+        toolPanel.add(new JLabel("Stroke:"));
+        toolPanel.add(strokeSlider);
 
-        // === Color Buttons ===
         JPanel palettePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        palettePanel.setPreferredSize(new Dimension(300, 50));
+
         JPanel strokePreview = new JPanel();
         JPanel fillPreview = new JPanel();
 
@@ -90,7 +100,6 @@ public class PaintApp extends JFrame {
             palettePanel.add(btn);
         }
 
-        // === Stroke & Fill Panels ===
         strokePreview.setPreferredSize(new Dimension(60, 40));
         strokePreview.setBackground(drawArea.getStrokeColor());
         strokePreview.setBorder(BorderFactory.createTitledBorder("Stroke"));
@@ -105,20 +114,35 @@ public class PaintApp extends JFrame {
         previewPanel.add(Box.createVerticalStrut(5));
         previewPanel.add(fillPreview);
 
-        // === Combine Panels ===
         JPanel colorPanel = new JPanel(new BorderLayout());
         colorPanel.add(palettePanel, BorderLayout.CENTER);
         colorPanel.add(previewPanel, BorderLayout.EAST);
 
-        // === Top Panel ===
-        JPanel topPanel = new JPanel(new BorderLayout());
+        JPanel topPanel = new JPanel(new BorderLayout(10, 0));
         topPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         topPanel.add(toolPanel, BorderLayout.WEST);
         topPanel.add(colorPanel, BorderLayout.EAST);
-
         add(topPanel, BorderLayout.NORTH);
 
         setVisible(true);
+    }
+
+    private JToggleButton createToggleToolButton(String iconPath, String tooltip) {
+        ImageIcon icon = new ImageIcon(
+                new ImageIcon(iconPath).getImage().getScaledInstance(24, 24, Image.SCALE_SMOOTH));
+        JToggleButton btn = new JToggleButton(icon);
+        btn.setToolTipText(tooltip);
+        btn.setPreferredSize(new Dimension(40, 40));
+        return btn;
+    }
+
+    private JButton createIconButton(String iconPath, String tooltip) {
+        ImageIcon icon = new ImageIcon(
+                new ImageIcon(iconPath).getImage().getScaledInstance(24, 24, Image.SCALE_SMOOTH));
+        JButton btn = new JButton(icon);
+        btn.setToolTipText(tooltip);
+        btn.setPreferredSize(new Dimension(40, 40));
+        return btn;
     }
 
     static class DrawArea extends JPanel {
@@ -129,6 +153,7 @@ public class PaintApp extends JFrame {
         private Tool currentTool = Tool.PENCIL;
         private Color strokeColor = Color.BLACK;
         private Color fillColor = Color.WHITE;
+        private int strokeWidth = 2;
         private Point startPoint, endPoint;
         private final java.util.List<ColoredShape> shapes = new ArrayList<>();
         private boolean isRightClick = false;
@@ -190,6 +215,10 @@ public class PaintApp extends JFrame {
             this.fillColor = color;
         }
 
+        public void setStrokeWidth(int width) {
+            this.strokeWidth = width;
+        }
+
         public Color getStrokeColor() {
             return strokeColor;
         }
@@ -214,9 +243,10 @@ public class PaintApp extends JFrame {
             } else {
                 shape = new Line2D.Float(start, end);
             }
-            shapes.add(new ColoredShape(shape,
-                    currentTool == Tool.ERASER ? Color.WHITE : strokeColor,
-                    currentTool == Tool.PENCIL || currentTool == Tool.ERASER ? null : fillColor));
+
+            Color stroke = currentTool == Tool.ERASER ? Color.WHITE : strokeColor;
+            shapes.add(new ColoredShape(shape, stroke,
+                    (currentTool == Tool.PENCIL || currentTool == Tool.ERASER) ? null : fillColor, strokeWidth));
         }
 
         protected void paintComponent(Graphics g) {
@@ -229,6 +259,7 @@ public class PaintApp extends JFrame {
                 }
                 if (cs.stroke != null) {
                     g2.setColor(cs.stroke);
+                    g2.setStroke(new BasicStroke(cs.strokeWidth));
                     g2.draw(cs.shape);
                 }
             }
@@ -238,11 +269,13 @@ public class PaintApp extends JFrame {
             Shape shape;
             Color stroke;
             Color fill;
+            int strokeWidth;
 
-            public ColoredShape(Shape shape, Color stroke, Color fill) {
+            public ColoredShape(Shape shape, Color stroke, Color fill, int strokeWidth) {
                 this.shape = shape;
                 this.stroke = stroke;
                 this.fill = fill;
+                this.strokeWidth = strokeWidth;
             }
         }
     }
